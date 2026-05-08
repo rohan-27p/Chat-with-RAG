@@ -16,8 +16,7 @@ __pycache__/
 
 # Uploads & Storage
 uploads/
-storage/*/chunks.json
-storage/*/index.faiss
+storage/
 !storage/.gitkeep
 
 # IDE

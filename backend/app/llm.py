@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # Type aliases
 # ---------------------------------------------------------------------------
 
-Citation = dict  # {"page": int, "snippet": str}
+Citation = dict  # {"fileName": str, "page": int, "snippet": str}
 QueryResult = dict  # {"answer": str, "citations": list[Citation], "isOutOfScope": bool}
 
 # Patterns that indicate the user is asking about the document as a whole.
@@ -101,7 +101,11 @@ questions using the context passages supplied in the user message.
   "grounded": true | false,
   "answer": "<complete explanatory answer using only the context>",
   "citations": [
-    {"page": <integer>, "snippet": "<exact verbatim quote from context>"}
+    {
+      "fileName": "<PDF file name>",
+      "page": <integer>,
+      "snippet": "<exact verbatim quote from context>"
+    }
   ]
 }
    • When grounded=false: answer must be null and citations must be [].
@@ -206,8 +210,9 @@ def _log_retrieval(question: str, hits: list[tuple[dict, float]]) -> None:
     logger.info("Retrieved %d chunk(s):", len(hits))
     for rank, (chunk, score) in enumerate(hits, start=1):
         logger.info(
-            "  [%d] page=%d  score=%.4f  text=%r…",
+            "  [%d] file=%s  page=%d  score=%.4f  text=%r…",
             rank,
+            chunk.get("file_name", "document.pdf"),
             chunk["page_num"],
             score,
             chunk["text"][:100],
@@ -218,7 +223,11 @@ def _log_retrieval(question: str, hits: list[tuple[dict, float]]) -> None:
 def _build_context(hits: list[tuple[dict, float]]) -> str:
     lines: list[str] = []
     for chunk, score in hits:
-        lines.append(f"[Page {chunk['page_num']} | similarity={score:.3f}]\n{chunk['text']}")
+        lines.append(
+            f"[File {chunk.get('file_name', 'document.pdf')} | "
+            f"Page {chunk['page_num']} | similarity={score:.3f}]\n"
+            f"{chunk['text']}"
+        )
     return "\n\n---\n\n".join(lines)
 
 
@@ -284,17 +293,21 @@ def _parse_response(raw: str) -> QueryResult:
 
 def _normalise_citations(raw: list[dict]) -> list[Citation]:
     """Validate, deduplicate, and sort citations. Returns [] on total failure."""
-    seen: set[int] = set()
+    seen: set[tuple[str, int, str]] = set()
     result: list[Citation] = []
 
     for c in raw:
         try:
+            file_name = str(c.get("fileName") or c.get("file_name") or "").strip()
             page = int(c["page"])
             snippet = str(c.get("snippet", "")).strip()
         except (KeyError, TypeError, ValueError):
             continue
-        if page not in seen and snippet:
-            seen.add(page)
-            result.append({"page": page, "snippet": snippet})
+        if not file_name or not snippet:
+            continue
+        key = (file_name, page, snippet)
+        if key not in seen:
+            seen.add(key)
+            result.append({"fileName": file_name, "page": page, "snippet": snippet})
 
-    return sorted(result, key=lambda c: c["page"])
+    return sorted(result, key=lambda c: (c["fileName"].lower(), c["page"], c["snippet"]))

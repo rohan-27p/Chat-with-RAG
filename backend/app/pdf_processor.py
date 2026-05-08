@@ -5,10 +5,12 @@ Returns a list of dicts: [{"page_num": int, "text": str}, ...]
 Only pages with meaningful text content are included.
 """
 
+import os
+
 import fitz  # PyMuPDF
 
 
-def extract_pages(pdf_path: str) -> list[dict]:
+def extract_pages(pdf_path: str, file_name: str | None = None) -> list[dict]:
     """
     Open the PDF at pdf_path and extract text for each page.
 
@@ -20,13 +22,20 @@ def extract_pages(pdf_path: str) -> list[dict]:
     """
     doc = fitz.open(pdf_path)
     pages: list[dict] = []
+    resolved_file_name = file_name or os.path.basename(pdf_path)
 
     for page_index in range(len(doc)):
         page = doc[page_index]
         text = page.get_text("text")  # plain text with newlines
         text = _clean(text)
         if text:
-            pages.append({"page_num": page_index + 1, "text": text})
+            pages.append(
+                {
+                    "file_name": resolved_file_name,
+                    "page_num": page_index + 1,
+                    "text": text,
+                }
+            )
 
     doc.close()
 

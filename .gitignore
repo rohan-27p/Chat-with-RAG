@@ -60,6 +60,7 @@ Thumbs.db
 # Application specific
 uploads/
 *.pdf
+backend/storage/
 storage/*/
 !storage/.gitkeep
 

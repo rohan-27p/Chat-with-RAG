@@ -13,6 +13,7 @@ Output
 ------
 List of dicts:
     {
+        "file_name":   str,   # original PDF file name
         "page_num":    int,   # 1-based page number from the PDF
         "text":        str,   # decoded chunk text
         "token_count": int,   # number of tokens in this chunk
@@ -73,18 +74,22 @@ def chunk_pages(pages: list[dict]) -> list[dict]:
         pages: Output of pdf_processor.extract_pages().
 
     Returns:
-        List of chunk dicts with page_num, text, and token_count.
+        List of chunk dicts with file_name, page_num, text, and token_count.
     """
     chunks: list[dict] = []
 
     for page in pages:
-        page_chunks = _chunk_text(page["text"], page["page_num"])
+        page_chunks = _chunk_text(
+            text=page["text"],
+            page_num=page["page_num"],
+            file_name=page.get("file_name", "document.pdf"),
+        )
         chunks.extend(page_chunks)
 
     return chunks
 
 
-def _chunk_text(text: str, page_num: int) -> list[dict]:
+def _chunk_text(text: str, page_num: int, file_name: str) -> list[dict]:
     enc = _get_encoding()
     tokens = enc.encode(text)
 
@@ -93,7 +98,14 @@ def _chunk_text(text: str, page_num: int) -> list[dict]:
 
     # Entire page fits in one chunk
     if len(tokens) <= CHUNK_MAX_TOKENS:
-        return [{"page_num": page_num, "text": text, "token_count": len(tokens)}]
+        return [
+            {
+                "file_name": file_name,
+                "page_num": page_num,
+                "text": text,
+                "token_count": len(tokens),
+            }
+        ]
 
     # Sliding-window split
     stride = CHUNK_MAX_TOKENS - CHUNK_OVERLAP_TOKENS
@@ -112,6 +124,7 @@ def _chunk_text(text: str, page_num: int) -> list[dict]:
 
         result.append(
             {
+                "file_name": file_name,
                 "page_num": page_num,
                 "text": enc.decode(window),
                 "token_count": len(window),
