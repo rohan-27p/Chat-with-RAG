@@ -26,4 +26,12 @@ MAX_PDF_SIZE_MB: int = 50
 STORAGE_DIR: str = os.path.join(os.path.dirname(__file__), "storage")
 UPLOAD_DIR: str = os.path.join(os.path.dirname(__file__), "uploads")
 PORT: int = int(os.getenv("PORT", "3001"))
-CORS_ORIGIN: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+_raw_frontend_origins = os.getenv("FRONTEND_URLS") or os.getenv(
+    "FRONTEND_URL", "http://localhost:5173"
+)
+CORS_ORIGINS: list[str] = [
+    origin.strip().rstrip("/")
+    for origin in _raw_frontend_origins.split(",")
+    if origin.strip()
+]

@@ -29,7 +29,7 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import (  # noqa: E402
-    CORS_ORIGIN,
+    CORS_ORIGINS,
     LLM_MODEL,
     MAX_PDF_SIZE_MB,
     PORT,
@@ -60,7 +60,7 @@ app = FastAPI(title="PDF Chat API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[CORS_ORIGIN],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
